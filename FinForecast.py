@@ -1,7 +1,6 @@
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter
+import plotly.graph_objects as go
 
 # --- Full page layout ---
 st.set_page_config(page_title="Wealth Forecast", layout="wide")
@@ -15,13 +14,12 @@ col1, col2 = st.sidebar.columns([2, 1])
 slider_interest = col1.slider("Annual interest rate (%)", 0.0, 20.0, 7.0)
 typed_interest = col2.text_input("", value=f"{slider_interest}")
 
-# Synchronize: typed input overrides slider if valid
 try:
     interest = float(typed_interest) / 100
 except ValueError:
-    interest = slider_interest / 100  # fallback to slider
+    interest = slider_interest / 100
 
-# Monthly investment and starting wealth with custom increments
+# Monthly investment + starting wealth
 investment = st.sidebar.number_input(
     "Monthly investment (€)", min_value=0, value=1000, step=50
 )
@@ -29,9 +27,11 @@ wealth_start = st.sidebar.number_input(
     "Starting wealth (€)", min_value=0, value=3000, step=1000
 )
 
+# Year range
 year_start = st.sidebar.number_input("Start year", min_value=1900, max_value=3000, value=2026)
 year_end = st.sidebar.number_input("End year", min_value=1900, max_value=3000, value=2069)
 
+# Targets
 st.sidebar.markdown("### Set your own target(s)")
 targets_input = st.sidebar.text_area(
     "Enter target values separated by commas (e.g., 100000, 250000, 500000)",
@@ -46,6 +46,7 @@ except ValueError:
 # --- Calculations ---
 growth = (1 + interest) ** (1 / 12) - 1
 months = 12 * (year_end - year_start)
+
 time = np.array([year_start + m / 12 for m in range(months)])
 
 wealth = [wealth_start]
@@ -53,82 +54,98 @@ for _ in range(months - 1):
     wealth.append(wealth[-1] * (1 + growth) + investment)
 wealth = np.array(wealth)
 
+contributions = wealth_start + investment * np.arange(months)
+
 # --- Display Target Achievements ---
 if targets:
     st.markdown("### 🎯 Target Achievements")
+
     # Millionaire milestone
     millionaire_idx = np.argmax(wealth >= 1_000_000)
-    if wealth[millionaire_idx] >= 1_000_000 and (year_start + millionaire_idx / 12) <= year_end:
+    if wealth[millionaire_idx] >= 1_000_000:
         millionaire_year = year_start + millionaire_idx / 12
-        st.success(f"💰 You will be a millionaire by year {millionaire_year:.0f}!")
-    target_years = []
+        st.success(f"💰 You will be a millionaire by {millionaire_year:.0f}!")
+
+    # Custom targets
     for i, target in enumerate(targets, start=1):
-        reached_idx = np.argmax(wealth >= target)
-        if wealth[reached_idx] >= target:
-            year_reached = year_start + reached_idx / 12
+        idx = np.argmax(wealth >= target)
+        if wealth[idx] >= target:
+            year_reached = year_start + idx / 12
             st.write(f"Target €{target:,.0f} reached in year {year_reached:.0f}")
-            target_years.append((target, year_reached))
         else:
             st.write(f"Target €{target:,.0f} not reached by {year_end}")
-            target_years.append((target, None))
 
-# --- Graph ---
+# --- Plotly Graph ---
 st.markdown("### 📈 Wealth Forecast Graph")
 
-fig, ax = plt.subplots(figsize=(14, 6))
+fig = go.Figure()
 
-# Plot Wealth Forecast
-ax.plot(time, wealth / 1e6, label="Wealth Forecast", color="#1f77b4", linewidth=3)
+# Wealth Forecast Line with final marker
+fig.add_trace(go.Scatter(
+    x=time,
+    y=wealth / 1e6,
+    name="Wealth Forecast",
+    mode="lines+markers+text",          # add markers and text
+    line=dict(color="#1f77b4", width=3),
+    marker=dict(size=[0]*(len(wealth)-1) + [12], color="#1f77b4"),  # only final marker
+    text=[None]*(len(wealth)-1) + [f"{wealth[-1]/1e6:.2f}M"],      # only final text
+    textposition="middle right",
+    hovertemplate="Year: %{x:.0f}<br>Wealth: €%{y:.2f}M"
+))
 
-# Plot Total Contributions
-ax.plot(time, (wealth_start + investment * np.arange(len(time))) / 1e6,
-        label="Total Contributions", color="#ff7f0e", linewidth=2, linestyle="--")
+# Total Contributions Line with final marker
+fig.add_trace(go.Scatter(
+    x=time,
+    y=contributions / 1e6,
+    name="Total Contributions",
+    mode="lines+markers+text",
+    line=dict(color="#ff7f0e", width=2, dash="dash"),
+    marker=dict(size=[0]*(len(contributions)-1) + [12], color="#ff7f0e"),
+    text=[None]*(len(contributions)-1) + [f"{contributions[-1]/1e6:.2f}M"],
+    textposition="middle right",
+    hovertemplate="Year: %{x:.0f}<br>Total Contributions: €%{y:.2f}M"
+))
 
-# Plot targets
+# Target lines
 for i, target in enumerate(targets, start=1):
-    ax.axhline(y=target / 1e6, linestyle="--", color="gray", linewidth=1.5,
-               label=f"Target {i} (€{target:,.0f})")
+    fig.add_trace(go.Scatter(
+        x=[time[0], time[-1]],
+        y=[target / 1e6, target / 1e6],
+        mode="lines",
+        name=f"Target {i} (€{target:,.0f})",
+        line=dict(color="gray", dash="dot")
+    ))
 
-# Highlight millionaire milestone
+# Millionaire milestone
+millionaire_idx = np.argmax(wealth >= 1_000_000)
 if wealth[millionaire_idx] >= 1_000_000:
-    ax.scatter(year_start + millionaire_idx / 12, wealth[millionaire_idx] / 1e6,
-               color="gold", s=100, zorder=5, label="Millionaire milestone")
+    fig.add_trace(go.Scatter(
+        x=[year_start + millionaire_idx / 12],
+        y=[wealth[millionaire_idx] / 1e6],
+        mode="markers",
+        marker=dict(size=14, color="gold", symbol="star"),
+        name="Millionaire milestone"
+    ))
 
-# Format Y-axis in Millions
-ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}M'))
-
-# Find final values
-final_year = year_end
-final_wealth = wealth[-1] / 1e6
-final_investment = (wealth_start + investment * (len(time)-1)) / 1e6
-plt.plot(final_year, final_wealth, 'o', color="#1f77b4", markersize = 10)
-plt.plot(final_year, final_investment, 'o', color="#ff7f0e", markersize = 10)
-
-# Add Wealth label
-ax.text(
-    final_year, final_wealth,
-    f" {final_wealth:.2f}M",
-    fontsize=12, color="#1f77b4", weight="bold",
-    ha="left", va="center"
+# Layout
+fig.update_layout(
+    height=550,
+    xaxis_title="Year",
+    yaxis_title="Accumulated Wealth (€ Millions)",
+    title=f"Wealth Forecast with €{wealth_start:,} start, €{investment:,}/month, {interest*100:.2f}% annual interest",
+    hovermode="closest",
+    template="plotly_white",
+    legend=dict(
+        orientation="h",
+        x=0,
+        y=1.1,
+        bgcolor="rgba(255,255,255,0.8)",
+        bordercolor="lightgray",
+        borderwidth=1,
+    )
 )
 
-# Add Contributions label
-ax.text(
-    final_year, final_investment,
-    f" {final_investment:.2f}M",
-    fontsize=12, color="#ff7f0e", weight="bold",
-    ha="left", va="center"
-)
+# Y-axis formatting
+fig.update_yaxes(tickformat=".1f")
 
-# Style improvements
-ax.set_xlim(year_start, year_end)
-ax.set_ylim(0, max(np.max(wealth), max(targets) if targets else 0, 1_000_000) / 1e6 * 1.1)
-ax.set_xlabel("Year", fontsize=12, weight='bold')
-ax.set_ylabel("Accumulated Wealth (€ Millions)", fontsize=12, weight='bold')
-ax.set_title(f"Wealth Forecast with €{wealth_start:,} start, €{investment:,}/month, {interest*100:.2f}% annual interest",
-             fontsize=14, weight='bold')
-
-ax.grid(True, linestyle='--', alpha=0.5)
-ax.legend(loc='upper left', fontsize=10, frameon=True, shadow=True)
-
-st.pyplot(fig)
+st.plotly_chart(fig, use_container_width=True)
