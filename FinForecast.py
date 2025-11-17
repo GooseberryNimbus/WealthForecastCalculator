@@ -5,7 +5,7 @@ from matplotlib.ticker import FuncFormatter
 
 # --- Full page layout ---
 st.set_page_config(page_title="Wealth Forecast", layout="wide")
-st.title("📈 Wealth Forecast Calculator")
+st.title("Wealth Forecast Calculator")
 
 # --- Sidebar Controls ---
 st.sidebar.header("Investment Settings")
@@ -95,7 +95,30 @@ if wealth[millionaire_idx] >= 1_000_000:
                color="gold", s=100, zorder=5, label="Millionaire milestone")
 
 # Format Y-axis in Millions
-ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.0f}M'))
+ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.1f}M'))
+
+# Find final values
+final_year = year_end
+final_wealth = wealth[-1] / 1e6
+final_investment = (wealth_start + investment * (len(time)-1)) / 1e6
+plt.plot(final_year, final_wealth, 'o', color="#1f77b4", markersize = 10)
+plt.plot(final_year, final_investment, 'o', color="#ff7f0e", markersize = 10)
+
+# Add Wealth label
+ax.text(
+    final_year, final_wealth,
+    f" {final_wealth:.2f}M",
+    fontsize=12, color="#1f77b4", weight="bold",
+    ha="left", va="center"
+)
+
+# Add Contributions label
+ax.text(
+    final_year, final_investment,
+    f" {final_investment:.2f}M",
+    fontsize=12, color="#ff7f0e", weight="bold",
+    ha="left", va="center"
+)
 
 # Style improvements
 ax.set_xlim(year_start, year_end)
