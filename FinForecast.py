@@ -29,8 +29,8 @@ wealth_start = st.sidebar.number_input(
 
 # Fiscal partner checkbox
 col_start, col_end = st.sidebar.columns(2)
-model_tax = col_start.checkbox("Vermogensbelasting", value=True)
-has_partner = col_end.checkbox("Fiscal partner", value=True)
+model_tax = col_start.checkbox("Vermogens belasting", value=True)
+has_partner = col_end.checkbox("Fiscaal partner", value=True)
 
 # Year range
 col_start, col_end = st.sidebar.columns(2)
