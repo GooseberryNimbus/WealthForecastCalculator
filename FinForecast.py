@@ -27,9 +27,28 @@ wealth_start = st.sidebar.number_input(
     "Starting wealth (€)", min_value=0, value=3000, step=1000
 )
 
+# Fiscal partner checkbox
+col_start, col_end = st.sidebar.columns(2)
+model_tax = col_start.checkbox("Tax", value=True)
+has_partner = col_end.checkbox("Fiscal partner", value=True)
+
 # Year range
-year_start = st.sidebar.number_input("Start year", min_value=1900, max_value=3000, value=2026)
-year_end = st.sidebar.number_input("End year", min_value=1900, max_value=3000, value=2069)
+col_start, col_end = st.sidebar.columns(2)
+year_start = col_start.number_input("Start year", min_value=1900, max_value=3000, value=2026)
+year_end = col_end.number_input("End year", min_value=1900, max_value=3000, value=2069)
+
+# Hypotheek
+hypotheek_start = st.sidebar.number_input(
+    "Hypotheek (€)", min_value=0, value=400000, step=50000
+)
+hypotheek_rente = st.sidebar.number_input(
+    "Rente (%)", min_value=0.0, value=4.0, step=0.1
+)
+hypotheek_rente = hypotheek_rente / 100
+maandsom = hypotheek_start * hypotheek_rente / 12 * (1 + hypotheek_rente / 12) ** (30 * 12) / ((1 + hypotheek_rente / 12) ** (30 * 12) - 1)
+hypotheek_aflossing = st.sidebar.number_input(
+    "Aflossing (€)", min_value=int(maandsom), value=int(maandsom), step=100
+)
 
 # Targets
 st.sidebar.markdown("### Set your own target(s)")
@@ -46,15 +65,52 @@ except ValueError:
 # --- Calculations ---
 growth = (1 + interest) ** (1 / 12) - 1
 months = 12 * (year_end - year_start)
+tax_threshold = 300 if has_partner else 150
 
 time = np.array([year_start + m / 12 for m in range(months)])
 
 wealth = [wealth_start]
 for _ in range(months - 1):
-    wealth.append(wealth[-1] * (1 + growth) + investment)
+    gross_add = wealth[-1] * growth
+    net_add = min(gross_add, tax_threshold) + np.max(gross_add - tax_threshold, 0) * 0.64  # 36% tax
+    wealth.append(wealth[-1] + net_add + investment)
 wealth = np.array(wealth)
 
 contributions = wealth_start + investment * np.arange(months)
+
+# --- Mortgage Model (Hypotheek) ---
+mortgage_months = 30 * 12          # 30-year mortgage
+monthly_rate = hypotheek_rente / 12
+
+hypotheek = np.zeros(months)
+aflossing = np.zeros(months)
+rente = np.zeros(months)
+
+remaining = hypotheek_start
+
+for m in range(months):
+    if remaining > 0:
+        # Interest this month
+        interest_payment = 120 + (remaining * monthly_rate - 120) * 0.63 # hypotheekrenteaftrek 
+        
+        # Principal paid off
+        principal_payment = hypotheek_aflossing - remaining * monthly_rate
+        
+        # Prevent paying more principal than remaining mortgage
+        principal_payment = min(principal_payment, remaining)
+        
+        remaining -= principal_payment
+        
+        hypotheek[m] = remaining
+        aflossing[m] = m * hypotheek_aflossing
+        rente[m] = interest_payment
+    else:
+        # Mortgage paid off: just keep 0 balance and repeat last aflossing amount
+        hypotheek[m] = 0
+        aflossing[m] = np.max(aflossing)
+        rente[m] = 0
+rente = np.cumsum(rente)
+
 
 # --- Display Target Achievements ---
 if targets:
@@ -106,6 +162,27 @@ fig.add_trace(go.Scatter(
     hovertemplate="Year: %{x:.0f}<br>Total Contributions: €%{y:.2f}M"
 ))
 
+# Hypotheek line
+fig.add_trace(go.Scatter(
+    x=time,
+    y=hypotheek / 1e6,
+    name="Restschuld Hypotheek",
+    line=dict(color="#a51fb4", width=2),
+    hovertemplate="Year: %{x:.0f}<br>Hypotheek: €%{y:.2f}M"
+))
+
+fig.add_trace(go.Scatter(
+    x=time,
+    y=rente / 1e6,
+    name="Hypotheek Rente",
+    mode="lines+markers+text",
+    line=dict(color="#ff0e0e", width=2, dash="dash"),
+    marker=dict(size=[0]*(len(rente)-1) + [12], color="#ff0e0e"),
+    text=[None]*(len(rente)-1) + [f"{rente[-1]/1e6:.2f}M"],
+    textposition="middle right",
+    hovertemplate="Year: %{x:.0f}<br>Total Rente: €%{y:.2f}M"
+))
+
 # Target lines
 for i, target in enumerate(targets, start=1):
     fig.add_trace(go.Scatter(
@@ -146,6 +223,6 @@ fig.update_layout(
 )
 
 # Y-axis formatting
-fig.update_yaxes(tickformat=".1f")
+#fig.update_yaxes(tickformat=".1f")
 
 st.plotly_chart(fig, use_container_width=True)
