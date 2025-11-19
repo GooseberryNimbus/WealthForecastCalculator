@@ -29,7 +29,7 @@ wealth_start = st.sidebar.number_input(
 
 # Fiscal partner checkbox
 col_start, col_end = st.sidebar.columns(2)
-model_tax = col_start.checkbox("Tax", value=True)
+model_tax = col_start.checkbox("Vermogensbelasting", value=True)
 has_partner = col_end.checkbox("Fiscal partner", value=True)
 
 # Year range
@@ -68,11 +68,11 @@ months = 12 * (year_end - year_start)
 tax_threshold = 300 if has_partner else 150
 
 time = np.array([year_start + m / 12 for m in range(months)])
-
+tax_rate = 0.36 if model_tax else 0.0
 wealth = [wealth_start]
 for _ in range(months - 1):
     gross_add = wealth[-1] * growth
-    net_add = min(gross_add, tax_threshold) + np.max(gross_add - tax_threshold, 0) * 0.64  # 36% tax
+    net_add = min(gross_add, tax_threshold) + np.max(gross_add - tax_threshold, 0) * (1-tax_rate)  # 36% tax
     wealth.append(wealth[-1] + net_add + investment)
 wealth = np.array(wealth)
 
