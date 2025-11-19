@@ -42,7 +42,7 @@ hypotheek_start = st.sidebar.number_input(
     "Hypotheek (€)", min_value=0, value=400000, step=50000
 )
 hypotheek_rente = st.sidebar.number_input(
-    "HypotheekRente (%)", min_value=0.0, value=4.0, step=0.1
+    "HypotheekRente (%)", min_value=0.0, value=3.8, step=0.1
 )
 hypotheek_rente = hypotheek_rente / 100
 maandsom = hypotheek_start * hypotheek_rente / 12 * (1 + hypotheek_rente / 12) ** (30 * 12) / ((1 + hypotheek_rente / 12) ** (30 * 12) - 1)
