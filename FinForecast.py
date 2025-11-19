@@ -132,7 +132,7 @@ if targets:
             st.write(f"Target €{target:,.0f} not reached by {year_end}")
 
 # --- Plotly Graph ---
-st.markdown("### 📈 Wealth Forecast Graph")
+st.markdown("### 📈 Vermogens Forecast")
 
 fig = go.Figure()
 
