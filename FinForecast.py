@@ -4,14 +4,14 @@ import plotly.graph_objects as go
 
 # --- Full page layout ---
 st.set_page_config(page_title="Wealth Forecast", layout="wide")
-st.title("Wealth Forecast Calculator")
+st.title("Vermogens Forecast Calculator")
 
 # --- Sidebar Controls ---
-st.sidebar.header("Investment Settings")
+st.sidebar.header("Investering Instellingen")
 
 # --- Interest slider + text input side by side ---
 col1, col2 = st.sidebar.columns([2, 1])
-slider_interest = col1.slider("Annual interest rate (%)", 0.0, 20.0, 7.0)
+slider_interest = col1.slider("Rendement (%)", 0.0, 20.0, 7.0)
 typed_interest = col2.text_input("", value=f"{slider_interest}")
 
 try:
@@ -21,10 +21,10 @@ except ValueError:
 
 # Monthly investment + starting wealth
 investment = st.sidebar.number_input(
-    "Monthly investment (€)", min_value=0, value=1000, step=50
+    "Maandelijkse inleg (€)", min_value=0, value=1000, step=50
 )
 wealth_start = st.sidebar.number_input(
-    "Starting wealth (€)", min_value=0, value=3000, step=1000
+    "Startvermogen (€)", min_value=0, value=3000, step=1000
 )
 
 # Fiscal partner checkbox
@@ -34,8 +34,8 @@ has_partner = col_end.checkbox("Fiscaal partner", value=True)
 
 # Year range
 col_start, col_end = st.sidebar.columns(2)
-year_start = col_start.number_input("Start year", min_value=1900, max_value=3000, value=2026)
-year_end = col_end.number_input("End year", min_value=1900, max_value=3000, value=2069)
+year_start = col_start.number_input("Start jaar", min_value=1900, max_value=3000, value=2026)
+year_end = col_end.number_input("End jaar", min_value=1900, max_value=3000, value=2069)
 
 # Hypotheek
 hypotheek_start = st.sidebar.number_input(
@@ -51,15 +51,15 @@ hypotheek_aflossing = st.sidebar.number_input(
 )
 
 # Targets
-st.sidebar.markdown("### Set your own target(s)")
+st.sidebar.markdown("### 🎯 Doelen")
 targets_input = st.sidebar.text_area(
-    "Enter target values separated by commas (e.g., 100000, 250000, 500000)",
+    "Vul doelen in met een komma (e.g., 100000, 250000, 500000)",
     value="100000"
 )
 try:
     targets = [float(t.strip()) for t in targets_input.split(",") if t.strip()]
 except ValueError:
-    st.sidebar.error("Please enter valid numbers separated by commas.")
+    st.sidebar.error("Vul doelen in met een komma als scheidingsteken.")
     targets = []
 
 # --- Calculations ---
