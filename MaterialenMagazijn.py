@@ -20,7 +20,7 @@ except Exception:
 
 # --- Dynamic Order Form ---
 if 'selected_stone_type' in st.session_state and 'selected_size' in st.session_state and 'order_action' in st.session_state:
-    st.subheader("📝 Order / Voorraad Update")
+    st.subheader("Order / Voorraad Update")
 
     form_cols = st.columns(2)
     with form_cols[0]:
@@ -47,7 +47,7 @@ if 'selected_stone_type' in st.session_state and 'selected_size' in st.session_s
     else:
         disabled = False
 
-    if st.button("✅ Bevestigen", disabled=disabled):
+    if st.button("Bevestigen", disabled=disabled):
         if action == "order":
             if qty > available:
                 st.error("Je kunt niet meer opvragen dan in voorraad is!")
@@ -74,7 +74,7 @@ if 'selected_stone_type' in st.session_state and 'selected_size' in st.session_s
 
 
 # --- Display Inventory ---
-st.subheader("📊 Beschikbare Voorraad")
+st.subheader("Beschikbare Voorraad")
 unique_types = inventory["StoneType"].unique()
 cols = st.columns(len(unique_types))
 
